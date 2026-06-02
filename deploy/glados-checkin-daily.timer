@@ -1,0 +1,11 @@
+[Unit]
+Description=Run GLaDOS daily check-in at 10:00 Beijing time
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 UTC
+Persistent=true
+AccuracySec=1m
+Unit=glados-checkin-daily.service
+
+[Install]
+WantedBy=timers.target

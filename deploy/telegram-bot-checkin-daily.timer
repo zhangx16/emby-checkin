@@ -1,0 +1,11 @@
+[Unit]
+Description=Run custom Telegram bot check-in at 10:15 Beijing time
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+Persistent=true
+AccuracySec=1m
+Unit=telegram-bot-checkin-daily.service
+
+[Install]
+WantedBy=timers.target

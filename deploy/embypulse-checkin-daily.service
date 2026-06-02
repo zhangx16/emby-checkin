@@ -1,0 +1,11 @@
+[Unit]
+Description=Run EmbyPulse daily check-in and Telegram report
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/glados-checkin-web
+EnvironmentFile=-/opt/glados-checkin-web/.env
+Environment=CHECKIN_PROJECT_ROOT=/opt/glados-checkin-web
+ExecStart=/usr/bin/node /opt/glados-checkin-web/scripts/embypulse_daily_checkin.js

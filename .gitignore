@@ -1,0 +1,40 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data. These files may contain cookies, passwords, Telegram sessions,
+# chat IDs, and generated status snapshots.
+data/*
+!data/.gitkeep
+!data/README.md
+!data/embykeeper/
+data/embykeeper/*
+!data/embykeeper/.gitkeep
+!data/embykeeper/runtime/
+data/embykeeper/runtime/*
+!data/embykeeper/runtime/.gitkeep
+
+# Local deployment configs with real domains or host-specific paths
+deploy/checkin.*.conf
+deploy/*.local.conf
+
+# Dependencies and virtual environments
+node_modules/
+.venv/
+.venv-*/
+venv/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Logs and process files
+*.log
+*.pid
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp

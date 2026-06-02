@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>签到面板</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Multi-Site Checkin Console</p>
+          <h1>签到面板</h1>
+          <p class="hero-text">
+            集中管理多个签到站点账号，查看状态、有效期、积分与签到结果，并执行单个或批量签到。
+          </p>
+          <div class="hero-actions">
+            <button id="addAccountBtn" class="primary-btn">新增账号</button>
+            <button id="refreshAllBtn" class="ghost-btn">刷新全部状态</button>
+            <button id="checkinAllBtn" class="ghost-btn">全部签到</button>
+          </div>
+        </div>
+        <aside class="hero-panel">
+          <div class="panel-label">服务地址</div>
+          <div id="serviceEndpoint" class="service-endpoint">加载中</div>
+          <div class="panel-label">最近操作</div>
+          <div id="lastActionText" class="last-action">尚未执行</div>
+        </aside>
+      </header>
+
+      <section class="stats-grid">
+        <article class="stat-card">
+          <div class="stat-label">账号总数</div>
+          <div id="statTotal" class="stat-value">0</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">有效状态</div>
+          <div id="statHealthy" class="stat-value">0</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">异常 / 失效</div>
+          <div id="statAttention" class="stat-value">0</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">今日已签到</div>
+          <div id="statChecked" class="stat-value">0</div>
+        </article>
+      </section>
+
+      <section class="toolbar">
+        <div class="toolbar-left">
+          <label class="search-shell">
+            <span>搜索</span>
+            <input id="searchInput" type="search" placeholder="名称、备注、域名">
+          </label>
+          <select id="providerFilter" class="filter-select">
+            <option value="">全部类型</option>
+            <option value="glados">GLaDOS</option>
+            <option value="embypulse">EmbyPulse</option>
+            <option value="incudal">Incudal</option>
+          </select>
+          <select id="statusFilter" class="filter-select">
+            <option value="">全部状态</option>
+            <option value="active">正常</option>
+            <option value="expired">已过期</option>
+            <option value="unpaid">待激活</option>
+            <option value="unauthorized">Cookie 失效</option>
+            <option value="error">请求异常</option>
+            <option value="unchecked">未查询</option>
+          </select>
+        </div>
+        <div class="toolbar-right">
+          <button id="logoutBtn" class="ghost-btn">退出登录</button>
+          <button id="importBtn" class="ghost-btn">导入 JSON</button>
+          <button id="exportBtn" class="ghost-btn">导出 JSON</button>
+          <button id="deleteSelectedBtn" class="danger-btn">删除所选</button>
+          <input id="importInput" type="file" accept="application/json" hidden>
+        </div>
+      </section>
+
+      <section class="table-board">
+        <div class="board-head">
+          <label class="select-all-wrap">
+            <input id="selectAll" type="checkbox">
+            <span>全选当前列表</span>
+          </label>
+          <div class="batch-actions">
+            <span id="selectedText">已选 0 项</span>
+            <button id="refreshSelectedBtn" class="ghost-btn compact-btn">刷新所选</button>
+            <button id="checkinSelectedBtn" class="primary-btn compact-btn">签到所选</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="checkbox-col"></th>
+                <th>账号</th>
+                <th>站点</th>
+                <th>状态</th>
+                <th>权益 / 数据</th>
+                <th>签到结果</th>
+                <th>更新时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="log-board">
+        <div class="board-title">操作日志</div>
+        <div id="logList" class="log-list">
+          <div class="log-empty">这里会显示最近一次批量刷新和批量签到的结果。</div>
+        </div>
+      </section>
+
+      <section class="integration-board">
+        <div class="board-title">Telegram 机器人签到 · emby-keeper</div>
+        <div class="integration-form-card">
+          <div class="integration-head">
+            <div>
+              <div class="integration-eyebrow">Form Builder</div>
+              <h2>表单配置</h2>
+            </div>
+            <span id="embykeeperFormState" class="muted-text">未加载</span>
+          </div>
+
+          <div class="form-shell">
+            <div class="form-section is-collapsed" data-collapse="telegram">
+              <div class="section-top">
+                <button class="collapse-toggle" type="button" data-collapse-target="telegram">
+                  <div class="integration-eyebrow">Telegram Accounts</div>
+                  <h3>Telegram 账号</h3>
+                </button>
+                <button id="addTelegramAccountBtn" class="ghost-btn compact-btn" type="button">新增账号</button>
+              </div>
+              <div id="telegramAccountsList" class="dynamic-list collapse-body"></div>
+            </div>
+
+            <div class="form-section is-collapsed" data-collapse="bot">
+              <div class="section-top">
+                <button class="collapse-toggle" type="button" data-collapse-target="bot">
+                  <div class="integration-eyebrow">Bot Templates</div>
+                  <h3>签到 Bot</h3>
+                </button>
+                <button id="addBotTemplateBtn" class="ghost-btn compact-btn" type="button">新增 Bot</button>
+              </div>
+              <div id="botTemplatesList" class="dynamic-list collapse-body"></div>
+            </div>
+
+            <div class="form-section" data-collapse="global">
+              <div class="section-top">
+                <button class="collapse-toggle" type="button" data-collapse-target="global">
+                  <div class="integration-eyebrow">Global Options</div>
+                  <h3>全局签到设置</h3>
+                </button>
+              </div>
+              <div id="globalCheckinerFields" class="field-grid collapse-body"></div>
+            </div>
+          </div>
+
+          <div class="integration-actions">
+            <button id="saveEmbykeeperFormBtn" class="primary-btn compact-btn" type="button">保存表单配置</button>
+          </div>
+        </div>
+
+        <div class="integration-grid">
+          <article class="integration-card">
+            <div class="integration-head">
+              <div>
+                <div class="integration-eyebrow">Worker Status</div>
+                <h2>运行状态</h2>
+              </div>
+              <span id="embykeeperStatusPill" class="status-pill status-unchecked">读取中</span>
+            </div>
+            <div class="integration-meta">
+              <div><strong>Binary:</strong> <span id="embykeeperBinaryPath">-</span></div>
+              <div><strong>Config:</strong> <span id="embykeeperConfigPath">-</span></div>
+              <div><strong>Runtime:</strong> <span id="embykeeperRuntimePath">-</span></div>
+              <div><strong>Session Files:</strong> <span id="embykeeperSessionFiles">-</span></div>
+            </div>
+            <div class="integration-hint">
+              首次 Telegram 登录建议在终端手动运行：
+              <code id="embykeeperFirstRunHint">scripts/embykeeper_run_once.sh</code>
+            </div>
+            <div class="integration-actions">
+              <button id="reloadEmbykeeperBtn" class="ghost-btn compact-btn" type="button">刷新状态</button>
+              <button id="runEmbykeeperBtn" class="primary-btn compact-btn" type="button">运行一次</button>
+            </div>
+          </article>
+
+          <article class="integration-card">
+            <div class="integration-head">
+              <div>
+                <div class="integration-eyebrow">Raw Config</div>
+                <h2>高级 TOML</h2>
+              </div>
+              <span id="embykeeperConfigState" class="muted-text">未保存</span>
+            </div>
+            <textarea id="embykeeperConfigEditor" class="integration-editor" spellcheck="false"></textarea>
+            <div class="integration-actions">
+              <button id="saveEmbykeeperConfigBtn" class="primary-btn compact-btn" type="button">保存配置</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="integration-output-card">
+          <div class="integration-head">
+            <div>
+              <div class="integration-eyebrow">Output</div>
+              <h2>最近运行输出</h2>
+            </div>
+          </div>
+          <textarea id="embykeeperOutput" class="integration-output" readonly placeholder="这里会显示 emby-keeper 运行输出..."></textarea>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="editorDialog" class="editor-dialog">
+      <form id="accountForm" class="editor-form" method="dialog">
+        <div class="editor-head">
+          <div>
+            <p class="editor-eyebrow">Account Editor</p>
+            <h2 id="dialogTitle">新增账号</h2>
+          </div>
+          <button id="closeDialogBtn" type="button" class="icon-btn" aria-label="关闭">×</button>
+        </div>
+
+        <input id="accountId" name="id" type="hidden">
+
+        <div class="field-row">
+          <label class="field">
+            <span>站点类型</span>
+            <select id="providerField" name="provider" required>
+              <option value="glados">GLaDOS</option>
+              <option value="embypulse">EmbyPulse</option>
+              <option value="incudal">Incudal</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>站点地址</span>
+            <input id="baseUrlField" name="baseUrl" type="url" placeholder="https://glados.network" required>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>账号名称</span>
+          <input id="nameField" name="name" type="text" placeholder="例如 主号 / 备用号" required>
+        </label>
+
+        <div id="cookieAuthGroup">
+          <label class="field">
+            <span>Cookie</span>
+            <textarea id="cookieField" name="cookie" rows="7" placeholder="完整浏览器 Cookie header，例如 koa:sess=...; koa:sess.sig=..."></textarea>
+          </label>
+        </div>
+
+        <div id="embyAuthGroup" class="provider-auth hidden">
+          <div class="field-row">
+            <label class="field">
+              <span>用户名</span>
+              <input id="usernameField" name="username" type="text" placeholder="站点登录用户名">
+            </label>
+            <label class="field">
+              <span>密码</span>
+              <input id="passwordField" name="password" type="password" placeholder="站点登录密码">
+            </label>
+          </div>
+          <label class="field checkbox-field">
+            <span>忽略 TLS 证书校验</span>
+            <input id="insecureTlsField" name="insecureTls" type="checkbox">
+          </label>
+        </div>
+
+        <label class="field">
+          <span>备注</span>
+          <input id="notesField" name="notes" type="text" placeholder="可选">
+        </label>
+
+        <div class="editor-foot">
+          <button id="cancelDialogBtn" type="button" class="ghost-btn">取消</button>
+          <button id="saveAccountBtn" type="submit" class="primary-btn">保存账号</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" aria-live="polite"></div>
+
+    <script src="/app.js"></script>
+  </body>
+  </html>

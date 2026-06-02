@@ -1,0 +1,16 @@
+[Unit]
+Description=GLaDOS Check-in Dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/glados-checkin-web
+EnvironmentFile=-/opt/glados-checkin-web/.env
+Environment=CHECKIN_PROJECT_ROOT=/opt/glados-checkin-web
+ExecStart=/usr/bin/node /opt/glados-checkin-web/server.js
+Restart=always
+RestartSec=3
+User=www-data
+
+[Install]
+WantedBy=multi-user.target

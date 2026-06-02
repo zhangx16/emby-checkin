@@ -1,0 +1,12 @@
+{
+  "name": "glados-checkin-web",
+  "version": "1.0.0",
+  "description": "GLaDOS account dashboard for status viewing and batch check-in",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check scripts/daily_checkin_report.js && node --check scripts/embypulse_daily_checkin.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run EmbyMB daily check-in at 10:12 Beijing time
+
+[Timer]
+OnCalendar=*-*-* 02:12:00 UTC
+Persistent=true
+AccuracySec=1m
+Unit=embymb-checkin-daily.service
+
+[Install]
+WantedBy=timers.target

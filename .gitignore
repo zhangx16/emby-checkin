@@ -38,3 +38,8 @@ __pycache__/
 .idea/
 .vscode/
 *.swp
+
+# Cached TG bot avatars
+public/bot-avatars/
+
+public/site-icons/

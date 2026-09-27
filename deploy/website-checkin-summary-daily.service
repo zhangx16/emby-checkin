@@ -1,0 +1,11 @@
+[Unit]
+Description=Send website check-in summary Telegram report
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/glados-checkin-web
+EnvironmentFile=-/root/glados-checkin-web/.env
+Environment=CHECKIN_PROJECT_ROOT=/root/glados-checkin-web
+ExecStart=/usr/bin/node /root/glados-checkin-web/scripts/website_checkin_summary.js

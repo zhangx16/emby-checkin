@@ -1,0 +1,11 @@
+[Unit]
+Description=Send website check-in summary at 10:14 Beijing time
+
+[Timer]
+OnCalendar=*-*-* 02:14:00 UTC
+Persistent=true
+AccuracySec=1m
+Unit=website-checkin-summary-daily.service
+
+[Install]
+WantedBy=timers.target

@@ -26,5 +26,7 @@ sudo systemctl enable --now glados-checkin-daily.timer
 Optional timers:
 
 - `embypulse-checkin-daily.timer`
+- `embymb-checkin-daily.timer`
+- `zhousanwan-checkin-daily.timer`
 - `embykeeper-checkin-daily.timer`
 - `telegram-bot-checkin-daily.timer`

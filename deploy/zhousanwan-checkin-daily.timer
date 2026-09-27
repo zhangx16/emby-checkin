@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Zhousanwan daily check-in at 10:10 Beijing time
+
+[Timer]
+OnCalendar=*-*-* 02:10:00 UTC
+Persistent=true
+AccuracySec=1m
+Unit=zhousanwan-checkin-daily.service
+
+[Install]
+WantedBy=timers.target

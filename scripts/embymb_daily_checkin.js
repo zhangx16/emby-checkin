@@ -2,70 +2,55 @@
 
 const fs = require("fs");
 const path = require("path");
+
 loadLocalEnv();
 
 const PROJECT_ROOT = path.join(__dirname, "..");
 const DATA_DIR = path.join(PROJECT_ROOT, "data");
-const ACCOUNTS_FILE = path.resolve(process.env.GLADOS_ACCOUNTS_FILE || path.join(DATA_DIR, "accounts.json"));
+const ACCOUNTS_FILE = path.resolve(
+  process.env.EMBYMB_ACCOUNTS_FILE || path.join(DATA_DIR, "embymb_accounts.json")
+);
 const TELEGRAM_CHAT_ID_FILE = path.join(DATA_DIR, "telegram-chat-id.txt");
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS || 20000);
-const DEFAULT_BASE_URL = "https://glados.network";
-const TELEGRAM_BOT_TOKEN = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
-const TELEGRAM_CHAT_ID = String(process.env.TELEGRAM_CHAT_ID || "").trim();
+const DEFAULT_BASE_URL = process.env.DEFAULT_EMBYMB_BASE_URL || "https://embymb.ichinosekotomi.com";
 const CHECKIN_MAX_ATTEMPTS = Math.max(1, Number(process.env.CHECKIN_MAX_ATTEMPTS || 3));
 const CHECKIN_RETRY_DELAY_MS = Math.max(0, Number(process.env.CHECKIN_RETRY_DELAY_MS || 5000));
 const TELEGRAM_ALERT_ON_FAILURE = parseBoolean(process.env.TELEGRAM_ALERT_ON_FAILURE, true);
 const TELEGRAM_DRY_RUN = parseBoolean(process.env.TELEGRAM_DRY_RUN, false);
-const GLADOS_DEVICE_USER_AGENTS = {
-  Windows:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-    "(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-  Mac:
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
-    "(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-  macOS:
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
-    "(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-  Linux:
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
-    "(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-  iPhone:
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 " +
-    "(KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-  Android:
-    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
-    "(KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36"
-};
-
-function gladosUserAgent(device) {
-  const key = String(device || "").trim();
-  return GLADOS_DEVICE_USER_AGENTS[key] || GLADOS_DEVICE_USER_AGENTS.Windows;
-}
+const TELEGRAM_BOT_TOKEN = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
+const TELEGRAM_CHAT_ID = String(process.env.TELEGRAM_CHAT_ID || "").trim();
+const USER_AGENT =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 
 function loadLocalEnv() {
   const envPath = path.join(__dirname, "..", ".env");
-  if (!fs.existsSync(envPath)) {
-    return;
-  }
+  if (!fs.existsSync(envPath)) return;
 
   const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
   for (const rawLine of lines) {
     const line = rawLine.trim();
-    if (!line || line.startsWith("#")) {
-      continue;
-    }
-
+    if (!line || line.startsWith("#")) continue;
     const index = line.indexOf("=");
-    if (index === -1) {
-      continue;
-    }
-
+    if (index === -1) continue;
     const key = line.slice(0, index).trim();
     const value = line.slice(index + 1).trim().replace(/^"(.*)"$/, "$1");
     if (key && process.env[key] === undefined) {
       process.env[key] = value;
     }
   }
+}
+
+function parseBoolean(value, fallback) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return fallback;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function formatIso(date = new Date()) {
@@ -85,27 +70,6 @@ function formatBeijing(date = new Date()) {
   }).format(date);
 }
 
-function parseBoolean(value, fallback) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (!normalized) {
-    return fallback;
-  }
-
-  if (["1", "true", "yes", "on"].includes(normalized)) {
-    return true;
-  }
-
-  if (["0", "false", "no", "off"].includes(normalized)) {
-    return false;
-  }
-
-  return fallback;
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -114,14 +78,11 @@ function ensureDataDir() {
 
 function readAccounts() {
   ensureDataDir();
-  if (!fs.existsSync(ACCOUNTS_FILE)) {
-    return [];
-  }
-
+  if (!fs.existsSync(ACCOUNTS_FILE)) return [];
   try {
     const parsed = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, "utf8"));
     return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -144,161 +105,193 @@ function cloneData(value) {
   return value == null ? null : JSON.parse(JSON.stringify(value));
 }
 
+function parseSetCookieLines(headers) {
+  if (typeof headers.getSetCookie === "function") {
+    return headers.getSetCookie();
+  }
+  const raw = headers.get("set-cookie");
+  if (!raw) return [];
+  return raw.split(/,(?=[^;,=\s]+=[^;,]+)/g).map((item) => item.trim()).filter(Boolean);
+}
+
+function buildCookieHeaderFromSetCookie(headers) {
+  return parseSetCookieLines(headers)
+    .map((line) => line.split(";")[0].trim())
+    .filter(Boolean)
+    .join("; ");
+}
+
 function isAlreadyCheckedInMessage(message) {
   const lowered = String(message || "").toLowerCase();
-  return ["tomorrow", "already", "checked in", "已签到", "明天", "重复"].some((marker) =>
+  return ["already", "checked in", "已签到", "今日已签到", "明天", "重复"].some((marker) =>
     lowered.includes(marker)
   );
 }
 
-async function gladosApiRequest(account, method, routePath, payload, userAgent) {
+async function jsonRequest(url, options = {}) {
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    ...options
+  });
+
+  const raw = await response.text();
+  let payload = {};
+  try {
+    payload = raw ? JSON.parse(raw) : {};
+  } catch {
+    payload = { success: false, message: raw.slice(0, 300) };
+  }
+
+  return { response, payload };
+}
+
+async function login(account) {
   const baseUrl = normalizeBaseUrl(account.baseUrl);
-  const host = new URL(baseUrl).hostname;
-  const url = new URL(`/api/${routePath.replace(/^\/+/, "")}`, `${baseUrl}/`);
+  const loginUrl = new URL("/api/v1/auth/login", `${baseUrl}/`);
+  const useEmail = String(account.username || "").includes("@");
+  const credentials = useEmail
+    ? { email: account.username, username: "", password: account.password }
+    : { username: account.username, password: account.password };
+  const { response, payload } = await jsonRequest(loginUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": USER_AGENT,
+      Origin: baseUrl,
+      Referer: `${baseUrl}/login`
+    },
+    body: JSON.stringify(credentials)
+  });
+
+  if (!response.ok || payload?.success !== true) {
+    throw new Error(payload?.message || `登录失败 HTTP ${response.status}`);
+  }
+
+  const cookie = buildCookieHeaderFromSetCookie(response.headers);
+  if (!cookie) {
+    throw new Error("登录成功但未获得会话 Cookie");
+  }
+
+  return { baseUrl, cookie };
+}
+
+async function apiRequest(session, method, routePath, payload) {
+  const url = new URL(routePath.replace(/^\//, ""), `${session.baseUrl}/`);
   const headers = {
     Accept: "application/json, text/plain, */*",
-    Cookie: account.cookie,
-    Origin: baseUrl,
-    Referer: `${baseUrl}/console/checkin`,
-    "User-Agent": userAgent || account.userAgent || gladosUserAgent(account.loginDevice)
-  };
-
-  const options = {
-    method,
-    headers,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    Cookie: session.cookie,
+    Origin: session.baseUrl,
+    Referer: `${session.baseUrl}/dashboard`,
+    "User-Agent": USER_AGENT
   };
 
   if (payload !== undefined) {
-    headers["Content-Type"] = "application/json;charset=UTF-8";
-    options.body = JSON.stringify(payload ?? { token: host });
+    headers["Content-Type"] = "application/json";
   }
 
-  let response;
-  try {
-    response = await fetch(url, options);
-  } catch (error) {
-    throw new Error(`请求失败: ${error.message}`);
-  }
-
-  const raw = await response.text();
-  let data;
-  try {
-    data = raw ? JSON.parse(raw) : {};
-  } catch (error) {
-    throw new Error(`接口返回不是 JSON: ${raw.slice(0, 180)}`);
-  }
+  const { response, payload: data } = await jsonRequest(url, {
+    method,
+    headers,
+    body: payload !== undefined ? JSON.stringify(payload) : undefined
+  });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${data.message || raw.slice(0, 180)}`);
+    throw new Error(data?.message || `HTTP ${response.status}`);
   }
 
   return data;
 }
 
-function summarizeStatusPayload(payload) {
-  const code = Number(payload?.code ?? -999);
-  if (code === 0) {
-    const data = payload?.data || {};
+async function getSigninStatus(session) {
+  return await apiRequest(session, "GET", "/api/v1/signin/me");
+}
+
+async function getSigninConfig(session) {
+  return await apiRequest(session, "GET", "/api/v1/signin/config");
+}
+
+function summarizeStatusPayload(infoPayload, configPayload) {
+  if (infoPayload?.success === true) {
+    const data = infoPayload?.data || {};
+    const config = configPayload?.data || {};
     return {
       ok: true,
-      code,
+      code: 0,
       state: "active",
-      message: payload?.message || "状态正常",
-      leftDays: data.leftDays ?? null,
-      vip: data.vip ?? null,
-      level: data.level ?? null,
-      plan: data.plan ?? null,
-      raw: cloneData(payload)
-    };
-  }
-
-  if (code === -100) {
-    return {
-      ok: false,
-      code,
-      state: "unpaid",
-      message: payload?.message || "待激活或未付费",
-      raw: cloneData(payload)
-    };
-  }
-
-  if (code === -101) {
-    return {
-      ok: false,
-      code,
-      state: "expired",
-      message: payload?.message || "套餐已过期",
-      raw: cloneData(payload)
-    };
-  }
-
-  if (code === -2) {
-    return {
-      ok: false,
-      code,
-      state: "unauthorized",
-      message: payload?.message || "Cookie 失效或无权限",
-      raw: cloneData(payload)
+      message: data.today_signed ? "今日已签到" : "可签到",
+      plan: data.currency_name || config.currency_name || "EmbyMB",
+      currency: data.currency_name || config.currency_name || "积分",
+      points: Number(data.current_points ?? 0),
+      currentStreak: Number(data.current_streak ?? 0),
+      longestStreak: Number(data.longest_streak ?? 0),
+      todaySigned: Boolean(data.today_signed),
+      lastSignInDate: data.last_signin_date || "",
+      totalPoints: Number(data.total_points ?? 0),
+      dailyMin: Number(config.daily_min ?? data.daily_min ?? 0),
+      dailyMax: Number(config.daily_max ?? data.daily_max ?? 0),
+      bonusTable: Array.isArray(config.bonus_table) ? config.bonus_table : [],
+      raw: cloneData({ infoPayload, configPayload })
     };
   }
 
   return {
     ok: false,
-    code,
+    code: null,
     state: "error",
-    message: payload?.message || "状态获取失败",
-    raw: cloneData(payload)
+    message: infoPayload?.message || "签到状态获取失败",
+    plan: "EmbyMB",
+    currency: configPayload?.data?.currency_name || infoPayload?.data?.currency_name || "积分",
+    points: null,
+    currentStreak: null,
+    longestStreak: null,
+    todaySigned: false,
+    lastSignInDate: "",
+    totalPoints: null,
+    dailyMin: Number(configPayload?.data?.daily_min ?? 0),
+    dailyMax: Number(configPayload?.data?.daily_max ?? 0),
+    bonusTable: Array.isArray(configPayload?.data?.bonus_table) ? configPayload.data.bonus_table : [],
+    raw: cloneData({ infoPayload, configPayload })
   };
 }
 
-function summarizeCheckinPayload(payload) {
-  const code = Number(payload?.code ?? -999);
+function summarizeCheckinPayload(payload, infoPayload) {
+  const data = payload?.data || {};
   const message = String(payload?.message || "");
+  const currentPoints = Number(data.current_points ?? infoPayload?.data?.current_points ?? 0);
+  const dailyPoints = Number(data.daily_points ?? data.bonus_points ?? 0);
+  const currency = data.currency_name || infoPayload?.data?.currency_name || "积分";
+  const lastSignInDate = data.last_signin_date || infoPayload?.data?.last_signin_date || "";
+  const already = Boolean(data.created === false) || infoPayload?.data?.today_signed === true || isAlreadyCheckedInMessage(message);
 
-  if (code === 0) {
+  if (payload?.success === true) {
     return {
       ok: true,
-      already: false,
-      code,
-      message: message || "签到成功",
-      points: payload?.points ?? null,
+      already,
+      code: 0,
+      message: message || (already ? "今天已经签到过了" : "签到成功"),
+      points: already ? 0 : dailyPoints,
+      balance: currentPoints,
+      currency,
+      currentPoints,
+      lastSignInDate,
+      todaySigned: true,
       raw: cloneData(payload)
     };
   }
 
-  if (isAlreadyCheckedInMessage(message)) {
+  if (already) {
     return {
       ok: true,
       already: true,
-      code,
-      message: message || "今天可能已经签过了",
-      points: payload?.points ?? null,
-      raw: cloneData(payload)
-    };
-  }
-
-  if (code === -2) {
-    return {
-      ok: false,
-      already: false,
-      code,
-      message: "Cookie 失效或无权限",
-      points: payload?.points ?? null,
-      raw: cloneData(payload)
-    };
-  }
-
-  if (code === 4 && payload?.reason === "device-mismatch") {
-    return {
-      ok: false,
-      already: false,
-      code,
-      reason: payload.reason,
-      loginDevice: payload.loginDevice || null,
-      currentDevice: payload.currentDevice || null,
-      message: message || "签到设备与登录设备不一致",
-      points: payload?.points ?? null,
+      code: 0,
+      message: message || "今天已经签到过了",
+      points: 0,
+      balance: currentPoints,
+      currency,
+      currentPoints,
+      lastSignInDate,
+      todaySigned: true,
       raw: cloneData(payload)
     };
   }
@@ -306,26 +299,68 @@ function summarizeCheckinPayload(payload) {
   return {
     ok: false,
     already: false,
-    code,
+    code: payload?.code ?? null,
     message: message || "签到失败",
-    points: payload?.points ?? null,
+    points: 0,
+    balance: currentPoints,
+    currency,
+    currentPoints,
+    lastSignInDate,
+    todaySigned: Boolean(infoPayload?.data?.today_signed),
     raw: cloneData(payload)
+  };
+}
+
+function reconcileCheckinWithStatus(checkin, status) {
+  if (checkin?.ok || !status?.todaySigned) {
+    return checkin;
+  }
+
+  const balance = status.points != null
+    ? Number(status.points)
+    : checkin?.balance ?? checkin?.currentPoints ?? null;
+
+  return {
+    ...checkin,
+    ok: true,
+    already: true,
+    code: checkin?.code ?? 0,
+    message: status.message || "状态刷新确认今日已签到",
+    points: 0,
+    balance,
+    currentPoints: balance,
+    currency: status.currency || checkin?.currency || "积分",
+    lastSignInDate: status.lastSignInDate || checkin?.lastSignInDate || "",
+    todaySigned: true,
+    reconciledAfterStatusRefresh: true
   };
 }
 
 async function refreshAccountStatus(account) {
   const now = formatIso();
   let status;
-
   try {
-    const payload = await gladosApiRequest(account, "GET", "user/status");
-    status = summarizeStatusPayload(payload);
+    const session = await login(account);
+    const infoPayload = await getSigninStatus(session);
+    const configPayload = await getSigninConfig(session);
+    status = summarizeStatusPayload(infoPayload, configPayload);
   } catch (error) {
     status = {
       ok: false,
       code: null,
       state: "error",
       message: error.message,
+      plan: "EmbyMB",
+      currency: "积分",
+      points: null,
+      currentStreak: null,
+      longestStreak: null,
+      todaySigned: false,
+      lastSignInDate: "",
+      totalPoints: null,
+      dailyMin: null,
+      dailyMax: null,
+      bonusTable: [],
       raw: null
     };
   }
@@ -340,49 +375,46 @@ async function refreshAccountStatus(account) {
 
 async function attemptCheckin(account) {
   try {
-    const host = new URL(normalizeBaseUrl(account.baseUrl)).hostname;
-    let userAgent = account.userAgent || gladosUserAgent(account.loginDevice);
-    let payload = await gladosApiRequest(account, "POST", "user/checkin", { token: host }, userAgent);
+    const session = await login(account);
+    const infoPayload = await getSigninStatus(session);
 
-    if (Number(payload?.code) === 4 && payload?.reason === "device-mismatch") {
-      const matchedAgent = gladosUserAgent(payload.loginDevice);
-      if (matchedAgent !== userAgent) {
-        payload = await gladosApiRequest(account, "POST", "user/checkin", { token: host }, matchedAgent);
-        userAgent = matchedAgent;
-      }
+    if (infoPayload?.data?.today_signed) {
+      return summarizeCheckinPayload({
+        success: true,
+        message: "今日已签到",
+        data: {
+          created: false,
+          current_points: infoPayload?.data?.current_points,
+          daily_points: 0,
+          currency_name: infoPayload?.data?.currency_name,
+          last_signin_date: infoPayload?.data?.last_signin_date,
+          total_points: infoPayload?.data?.total_points
+        }
+      }, infoPayload);
     }
 
-    const result = summarizeCheckinPayload(payload);
-    result.userAgent = userAgent;
-    if (payload?.loginDevice) {
-      result.loginDevice = payload.loginDevice;
-    }
-    return result;
+    const payload = await apiRequest(session, "POST", "/api/v1/signin");
+    return summarizeCheckinPayload(payload, infoPayload);
   } catch (error) {
     return {
       ok: false,
       already: false,
       code: null,
       message: error.message,
-      points: null,
+      points: 0,
+      balance: null,
+      currency: "积分",
+      currentPoints: null,
+      lastSignInDate: "",
+      todaySigned: false,
       raw: null
     };
   }
 }
 
 function shouldRetryCheckin(checkin, attemptNumber) {
-  if (attemptNumber >= CHECKIN_MAX_ATTEMPTS) {
-    return false;
-  }
-
-  if (checkin.ok) {
-    return false;
-  }
-
-  if (checkin.code === -2 || checkin.code === 4) {
-    return false;
-  }
-
+  if (attemptNumber >= CHECKIN_MAX_ATTEMPTS) return false;
+  if (checkin.ok) return false;
   return true;
 }
 
@@ -408,7 +440,7 @@ async function runAccountCheckin(account) {
     }
 
     console.warn(
-      `[glados-checkin] retry scheduled for ${account.name} (${attemptNumber}/${CHECKIN_MAX_ATTEMPTS}) after failure: ${checkin.message}`
+      `[embymb-checkin] retry scheduled for ${account.name} (${attemptNumber}/${CHECKIN_MAX_ATTEMPTS}) after failure: ${checkin.message}`
     );
     if (CHECKIN_RETRY_DELAY_MS > 0) {
       await sleep(CHECKIN_RETRY_DELAY_MS);
@@ -425,44 +457,21 @@ async function runAccountCheckin(account) {
   nextAccount.lastCheckinAt = now;
   nextAccount.lastCheckin = checkin;
   nextAccount.updatedAt = now;
-  if (checkin.userAgent) {
-    nextAccount.userAgent = checkin.userAgent;
-  }
-  if (checkin.loginDevice) {
-    nextAccount.loginDevice = checkin.loginDevice;
-  }
-
-  if (checkin.ok) {
-    nextAccount = await refreshAccountStatus(nextAccount);
-  } else if (checkin.code === -2) {
-    nextAccount.lastStatusAt = now;
-    nextAccount.lastStatus = {
-      ok: false,
-      code: -2,
-      state: "unauthorized",
-      message: "Cookie 失效或无权限",
-      raw: null
-    };
-  } else {
-    nextAccount = await refreshAccountStatus(nextAccount);
-  }
-
+  nextAccount = await refreshAccountStatus(nextAccount);
+  nextAccount.lastCheckin = reconcileCheckinWithStatus(nextAccount.lastCheckin, nextAccount.lastStatus);
   return nextAccount;
 }
 
 function readStoredTelegramChatId() {
   try {
     return fs.readFileSync(TELEGRAM_CHAT_ID_FILE, "utf8").trim();
-  } catch (error) {
+  } catch {
     return "";
   }
 }
 
 function storeTelegramChatId(chatId) {
-  if (!chatId) {
-    return;
-  }
-
+  if (!chatId) return;
   ensureDataDir();
   fs.writeFileSync(TELEGRAM_CHAT_ID_FILE, `${chatId}\n`);
 }
@@ -478,7 +487,6 @@ async function telegramApi(method, payload = null) {
     headers: payload ? { "Content-Type": "application/json" } : {},
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
   };
-
   if (payload) {
     options.body = JSON.stringify(payload);
   }
@@ -488,7 +496,7 @@ async function telegramApi(method, payload = null) {
   let data;
   try {
     data = text ? JSON.parse(text) : {};
-  } catch (error) {
+  } catch {
     throw new Error(`Telegram 返回异常: ${text.slice(0, 180)}`);
   }
 
@@ -500,25 +508,16 @@ async function telegramApi(method, payload = null) {
 }
 
 async function resolveTelegramChatId() {
-  if (TELEGRAM_CHAT_ID) {
-    return TELEGRAM_CHAT_ID;
-  }
-
+  if (TELEGRAM_CHAT_ID) return TELEGRAM_CHAT_ID;
   const stored = readStoredTelegramChatId();
-  if (stored) {
-    return stored;
-  }
-
+  if (stored) return stored;
   const updates = await telegramApi("getUpdates");
   const latest = [...updates]
     .reverse()
     .map((item) => item.message || item.edited_message || item.channel_post || item.callback_query?.message || null)
     .find((message) => message?.chat?.id != null);
-
   const chatId = latest?.chat?.id != null ? String(latest.chat.id) : "";
-  if (chatId) {
-    storeTelegramChatId(chatId);
-  }
+  if (chatId) storeTelegramChatId(chatId);
   return chatId;
 }
 
@@ -527,15 +526,11 @@ function splitTelegramText(text, limit = 3500) {
   let remaining = text;
   while (remaining.length > limit) {
     let index = remaining.lastIndexOf("\n", limit);
-    if (index < 0 || index < limit / 2) {
-      index = limit;
-    }
+    if (index < 0 || index < limit / 2) index = limit;
     chunks.push(remaining.slice(0, index));
     remaining = remaining.slice(index).replace(/^\n+/, "");
   }
-  if (remaining) {
-    chunks.push(remaining);
-  }
+  if (remaining) chunks.push(remaining);
   return chunks;
 }
 
@@ -569,7 +564,7 @@ function buildReport(results, sentAt) {
   const active = results.filter((item) => item.lastStatus?.state === "active").length;
 
   const lines = [
-    "GLaDOS 每日签到报告",
+    "EmbyMB 每日签到报告",
     `北京时间: ${formatBeijing(sentAt)}`,
     `UTC: ${formatIso(sentAt)}`,
     `账号总数: ${results.length}`,
@@ -591,7 +586,6 @@ function buildReport(results, sentAt) {
           ? `已签过 | ${checkin.message}`
           : `成功 | ${checkin.message}`
         : `失败 | ${checkin.message}`;
-
     const statusLabel = status
       ? `${status.state || "unknown"} | ${status.message || ""}`.trim()
       : "未获取状态";
@@ -600,9 +594,8 @@ function buildReport(results, sentAt) {
     lines.push(`签到: ${checkinLabel}`);
     lines.push(`尝试次数: ${checkin?.attemptCount ?? 0}/${checkin?.maxAttempts ?? CHECKIN_MAX_ATTEMPTS}`);
     lines.push(`状态: ${statusLabel}`);
-    lines.push(
-      `剩余天数: ${status?.leftDays ?? "--"} | VIP: ${status?.vip ?? "--"} | Level: ${status?.level ?? "--"}`
-    );
+    lines.push(`积分: ${status?.points ?? checkin?.balance ?? "--"} ${status?.currency || checkin?.currency || "积分"}`);
+    lines.push(`最近签到日: ${status?.lastSignInDate || checkin?.lastSignInDate || "--"}`);
     lines.push(`站点: ${account.baseUrl || DEFAULT_BASE_URL}`);
     lines.push("");
   });
@@ -612,12 +605,10 @@ function buildReport(results, sentAt) {
 
 function buildFailureAlert(results, sentAt) {
   const failedAccounts = results.filter((item) => !item.lastCheckin?.ok);
-  if (!failedAccounts.length) {
-    return "";
-  }
+  if (!failedAccounts.length) return "";
 
   const lines = [
-    "GLaDOS 签到失败告警",
+    "EmbyMB 签到失败告警",
     `北京时间: ${formatBeijing(sentAt)}`,
     `失败账号: ${failedAccounts.length}/${results.length}`,
     `已启用重试: 最多 ${CHECKIN_MAX_ATTEMPTS} 次，间隔 ${CHECKIN_RETRY_DELAY_MS} ms`,
@@ -631,14 +622,10 @@ function buildFailureAlert(results, sentAt) {
     lines.push(`最终错误: ${checkin?.message || "未知错误"}`);
     lines.push(`尝试次数: ${checkin?.attemptCount ?? 0}/${checkin?.maxAttempts ?? CHECKIN_MAX_ATTEMPTS}`);
     lines.push(`状态: ${status?.state ?? "unknown"} | ${status?.message || "未获取状态"}`);
-
     if (Array.isArray(checkin?.attempts) && checkin.attempts.length > 0) {
-      const attemptText = checkin.attempts
-        .map((item) => `#${item.attempt}:${item.message}`)
-        .join(" | ");
+      const attemptText = checkin.attempts.map((item) => `#${item.attempt}:${item.message}`).join(" | ");
       lines.push(`重试轨迹: ${attemptText}`);
     }
-
     lines.push("");
   });
 
@@ -651,7 +638,7 @@ async function main() {
 
   if (!accounts.length) {
     const report = [
-      "每日签到报告",
+      "EmbyMB 每日签到报告",
       `北京时间: ${formatBeijing(startedAt)}`,
       "没有可签到的账号记录。"
     ].join("\n");
@@ -670,9 +657,7 @@ async function main() {
 
   writeAccounts(nextAccounts);
 
-  const allResults = nextAccounts;
-
-  const report = buildReport(allResults, startedAt);
+  const report = buildReport(nextAccounts, startedAt);
   console.log(report);
 
   if (TELEGRAM_BOT_TOKEN) {
@@ -680,7 +665,7 @@ async function main() {
     console.log(`Telegram 已发送到 chat_id=${chatId}`);
 
     if (TELEGRAM_ALERT_ON_FAILURE) {
-      const failureAlert = buildFailureAlert(allResults, startedAt);
+      const failureAlert = buildFailureAlert(nextAccounts, startedAt);
       if (failureAlert) {
         await sendTelegramReport(failureAlert);
         console.log("Telegram 失败告警已发送");

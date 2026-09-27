@@ -57,6 +57,10 @@ body::before {
   z-index: 1;
 }
 
+.compact-shell {
+  width: min(1180px, calc(100vw - 32px));
+}
+
 .hero,
 .toolbar,
 .table-board,
@@ -78,6 +82,10 @@ body::before {
     linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 246, 255, 0.9)),
     linear-gradient(135deg, rgba(47, 107, 255, 0.03), rgba(56, 189, 248, 0.02));
   box-shadow: var(--shadow);
+}
+
+.compact-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
 }
 
 .eyebrow,
@@ -129,6 +137,10 @@ body::before {
     rgba(255, 255, 255, 0.7);
 }
 
+.compact-panel .hero-actions {
+  margin-top: 18px;
+}
+
 .service-endpoint {
   font-family: var(--mono);
   font-size: 14px;
@@ -164,6 +176,7 @@ body::before {
 
 .toolbar,
 .table-board,
+.project-board,
 .log-board,
 .integration-board {
   margin-top: 20px;
@@ -171,6 +184,10 @@ body::before {
   border-radius: var(--radius-md);
   background: var(--panel-strong);
   box-shadow: 0 12px 36px rgba(18, 53, 61, 0.08);
+}
+
+.compact-toolbar {
+  justify-content: flex-start;
 }
 
 .toolbar {
@@ -186,6 +203,14 @@ body::before {
   gap: 14px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.project-board {
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel-strong);
+  box-shadow: 0 12px 36px rgba(18, 53, 61, 0.08);
 }
 
 .search-shell {
@@ -295,6 +320,163 @@ button:disabled {
   border-bottom: 1px solid var(--line);
 }
 
+.simple-head {
+  border-bottom: 0;
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.project-card {
+  border: 1px solid rgba(27, 40, 82, 0.1);
+  border-radius: 18px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(245, 248, 255, 0.9)),
+    rgba(255, 255, 255, 0.86);
+  overflow: hidden;
+  box-shadow: 0 14px 34px rgba(18, 53, 61, 0.07);
+}
+
+.project-card.is-expanded {
+  border-color: rgba(47, 107, 255, 0.24);
+}
+
+.bot-card {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(240, 249, 255, 0.92)),
+    rgba(255, 255, 255, 0.86);
+}
+
+.project-summary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(260px, 1.35fr) minmax(150px, 0.55fr) minmax(220px, 0.85fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 18px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.project-summary:hover {
+  transform: none;
+  background: rgba(47, 107, 255, 0.035);
+}
+
+.project-summary:focus-visible {
+  outline: 3px solid rgba(47, 107, 255, 0.18);
+  outline-offset: -3px;
+}
+
+.project-topline {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.project-topline .provider-badge {
+  margin-bottom: 0;
+}
+
+.project-card h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.project-target {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.project-metric {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.project-metric-block,
+.project-status-block {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.project-status-block {
+  line-height: 1.45;
+}
+
+.project-status-block strong {
+  word-break: break-word;
+}
+
+.project-status-block span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.project-toggle {
+  justify-self: end;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.08);
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.project-details {
+  border-top: 1px solid rgba(27, 40, 82, 0.08);
+  padding: 14px 18px 18px;
+  background: rgba(246, 248, 253, 0.76);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail-item {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid rgba(27, 40, 82, 0.07);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.detail-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.detail-item strong {
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  padding: 22px;
+  color: var(--muted);
+}
+
 .select-all-wrap {
   display: flex;
   align-items: center;
@@ -309,7 +491,7 @@ button:disabled {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1040px;
+  min-width: 980px;
 }
 
 th,
@@ -463,6 +645,10 @@ tbody tr:hover {
   gap: 18px;
 }
 
+.readonly-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .integration-card,
 .integration-form-card,
 .integration-output-card {
@@ -527,6 +713,64 @@ tbody tr:hover {
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 18px;
+}
+
+.readonly-section {
+  margin-top: 18px;
+}
+
+.readonly-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.readonly-card {
+  border-radius: 18px;
+  border: 1px solid rgba(27, 40, 82, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 16px;
+}
+
+.readonly-card h3 {
+  margin: 10px 0 14px;
+  font-size: 18px;
+}
+
+.readonly-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.readonly-list {
+  display: grid;
+  gap: 10px;
+}
+
+.compact-list {
+  gap: 8px;
+}
+
+.readonly-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(246, 248, 253, 0.92);
+  border: 1px solid rgba(27, 40, 82, 0.07);
+  line-height: 1.5;
+}
+
+.readonly-row span {
+  color: var(--muted);
+}
+
+.readonly-row strong {
+  text-align: right;
+  word-break: break-word;
 }
 
 .form-shell {
@@ -875,6 +1119,28 @@ tbody tr:hover {
   }
 
   .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-grid {
+    padding: 0 14px 14px;
+  }
+
+  .project-summary {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .project-toggle {
+    justify-self: start;
+  }
+
+  .project-details {
+    padding: 12px 14px 14px;
+  }
+
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 }

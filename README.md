@@ -8,7 +8,7 @@
 - EmbyPulse 账号密码签到
 - EmbyMB 账号密码签到
 - 周三晚账号密码签到
-- 癫影（dian115）账号密码签到
+- 癫影（`@madowchat_bot`）Telegram `/lqd` 运气签到
 - Telegram Bot 签到
 - 自动签到脚本和 Telegram 汇报
 
@@ -206,6 +206,8 @@ Gary's Club（`@garysclubsubbot`）直接发送 `/checkin` 每日打卡领积分
 `/start` 会要求加入 `@garysclub` 和 `@roctech` 才能看订阅卡，worker 会忽略加群验证卡片，用 `/checkin` 完成打卡。
 ChaPanda（`@ChaPanda3_bot`）使用 `/start` 打开菜单，由 worker 点击「🎯 签到」。
 成功回复含「签到成功」或 callback「✔️ Done!」，已签到回复含「您今天已经签到过了」。未加入频道/群组的账号会被跳过。
+癫影 MADOW（`@madowchat_bot`）发送 `/lqd` 做运气签到。
+已签到回复「今日已签到。」；成功回复含运气结果（大奖 / 平手 / 空签 / 倒霉签）。当前用 `targetPhones` 指定已绑定门户的账号。
 
 ## 服务器部署
 

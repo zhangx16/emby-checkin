@@ -16,8 +16,6 @@ const DEFAULT_EMBYMB_BASE_URL =
   process.env.DEFAULT_EMBYMB_BASE_URL || "https://embymb.ichinosekotomi.com";
 const DEFAULT_ZHOUSANWAN_BASE_URL =
   process.env.DEFAULT_ZHOUSANWAN_BASE_URL || "https://zhousanwan.xyz";
-const DEFAULT_DIAN115_BASE_URL =
-  process.env.DEFAULT_DIAN115_BASE_URL || "https://m.dian115.com";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASS = process.env.ADMIN_PASS || "change-this-password";
 const SESSION_SECRET = process.env.SESSION_SECRET || "change-this-session-secret";
@@ -52,10 +50,6 @@ function gladosUserAgent(device) {
   return GLADOS_DEVICE_USER_AGENTS[key] || GLADOS_DEVICE_USER_AGENTS.Windows;
 }
 
-const DIAN115_USER_AGENT =
-  "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 " +
-  "(KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36";
-
 const DATA_DIR = path.join(__dirname, "data");
 const GLADOS_ACCOUNTS_FILE = path.resolve(
   process.env.GLADOS_ACCOUNTS_FILE || path.join(DATA_DIR, "accounts.json")
@@ -68,9 +62,6 @@ const EMBYMB_ACCOUNTS_FILE = path.resolve(
 );
 const ZHOUSANWAN_ACCOUNTS_FILE = path.resolve(
   process.env.ZHOUSANWAN_ACCOUNTS_FILE || path.join(DATA_DIR, "zhousanwan_accounts.json")
-);
-const DIAN115_ACCOUNTS_FILE = path.resolve(
-  process.env.DIAN115_ACCOUNTS_FILE || path.join(DATA_DIR, "dian115_accounts.json")
 );
 const EMBYKEEPER_DIR = path.join(DATA_DIR, "embykeeper");
 const EMBYKEEPER_CONFIG_FILE = path.join(EMBYKEEPER_DIR, "config.toml");
@@ -91,15 +82,13 @@ const PROVIDER_DEFAULT_BASE = {
   glados: DEFAULT_GLADOS_BASE_URL,
   embypulse: DEFAULT_EMBYPULSE_BASE_URL,
   embymb: DEFAULT_EMBYMB_BASE_URL,
-  zhousanwan: DEFAULT_ZHOUSANWAN_BASE_URL,
-  dian115: DEFAULT_DIAN115_BASE_URL
+  zhousanwan: DEFAULT_ZHOUSANWAN_BASE_URL
 };
 const PROVIDER_LABELS = {
   glados: "GLaDOS",
   embypulse: "EmbyPulse",
   embymb: "EmbyMB",
   zhousanwan: "周三晚",
-  dian115: "癫影",
   telegram_bot: "Telegram Bot"
 };
 const EMBYKEEPER_BUILTIN_CHECKINERS = {
@@ -170,7 +159,6 @@ function ensureDataFiles() {
   ensureJsonArrayFile(EMBYPULSE_ACCOUNTS_FILE);
   ensureJsonArrayFile(EMBYMB_ACCOUNTS_FILE);
   ensureJsonArrayFile(ZHOUSANWAN_ACCOUNTS_FILE);
-  ensureJsonArrayFile(DIAN115_ACCOUNTS_FILE);
   if (!fs.existsSync(EMBYKEEPER_DIR)) {
     fs.mkdirSync(EMBYKEEPER_DIR, { recursive: true });
   }
@@ -221,11 +209,8 @@ function readAccounts() {
   const zhousanwanAccounts = readJsonArray(ZHOUSANWAN_ACCOUNTS_FILE).map((item) =>
     normalizeStoredAccount(item, "zhousanwan")
   );
-  const dian115Accounts = readJsonArray(DIAN115_ACCOUNTS_FILE).map((item) =>
-    normalizeStoredAccount(item, "dian115")
-  );
 
-  return [...dian115Accounts, ...zhousanwanAccounts, ...embymbAccounts, ...embypulseAccounts, ...gladosAccounts];
+  return [...zhousanwanAccounts, ...embymbAccounts, ...embypulseAccounts, ...gladosAccounts];
 }
 
 function writeAccounts(accounts) {
@@ -242,15 +227,11 @@ function writeAccounts(accounts) {
   const zhousanwanAccounts = accounts
     .filter((item) => (item.provider || "glados") === "zhousanwan")
     .map(serializeAccountForStorage);
-  const dian115Accounts = accounts
-    .filter((item) => (item.provider || "glados") === "dian115")
-    .map(serializeAccountForStorage);
 
   fs.writeFileSync(GLADOS_ACCOUNTS_FILE, JSON.stringify(gladosAccounts, null, 2));
   fs.writeFileSync(EMBYPULSE_ACCOUNTS_FILE, JSON.stringify(embypulseAccounts, null, 2));
   fs.writeFileSync(EMBYMB_ACCOUNTS_FILE, JSON.stringify(embymbAccounts, null, 2));
   fs.writeFileSync(ZHOUSANWAN_ACCOUNTS_FILE, JSON.stringify(zhousanwanAccounts, null, 2));
-  fs.writeFileSync(DIAN115_ACCOUNTS_FILE, JSON.stringify(dian115Accounts, null, 2));
 }
 
 function normalizeBaseUrl(value, fallback = DEFAULT_GLADOS_BASE_URL) {
@@ -280,7 +261,7 @@ function providerLabel(provider) {
 }
 
 function isPasswordProvider(provider) {
-  return ["embypulse", "embymb", "zhousanwan", "dian115"].includes(provider);
+  return ["embypulse", "embymb", "zhousanwan"].includes(provider);
 }
 
 function cloneData(value) {
@@ -904,7 +885,6 @@ function normalizeProvider(value) {
   if (raw === "embypulse") return "embypulse";
   if (raw === "embymb") return "embymb";
   if (raw === "zhousanwan") return "zhousanwan";
-  if (raw === "dian115") return "dian115";
   return "glados";
 }
 
@@ -921,8 +901,6 @@ function normalizeAccountInput(body = {}, current = {}) {
       ? DEFAULT_EMBYMB_BASE_URL
     : provider === "zhousanwan"
       ? DEFAULT_ZHOUSANWAN_BASE_URL
-    : provider === "dian115"
-      ? DEFAULT_DIAN115_BASE_URL
       : DEFAULT_GLADOS_BASE_URL;
 
   return {
@@ -2114,144 +2092,6 @@ async function embypulseCheckSession(session) {
   return await embypulseApiRequest(session, "GET", "/api/requests/check");
 }
 
-function base64Url(buffer) {
-  return Buffer.from(buffer).toString("base64url");
-}
-
-async function dian115JsonRequest(baseUrl, routePath, options = {}) {
-  const url = new URL(`/api/portal/${routePath.replace(/^\/+/, "")}`, `${baseUrl}/`);
-  const headers = {
-    Accept: "application/json, text/plain, */*",
-    "Content-Type": "application/json",
-    "X-Requested-With": "XMLHttpRequest",
-    "X-Portal-Visitor-ID": options.visitorId,
-    "X-Portal-Current-Path": "/me/signin",
-    Origin: baseUrl,
-    Referer: `${baseUrl}/me/signin`,
-    "Sec-Fetch-Site": "same-origin",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Dest": "empty",
-    "User-Agent": DIAN115_USER_AGENT,
-    ...(options.headers || {})
-  };
-  if (options.cookie) headers.Cookie = options.cookie;
-  const response = await fetch(url, {
-    method: options.method || "GET",
-    headers,
-    body: options.payload === undefined ? undefined : JSON.stringify(options.payload),
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-  });
-  const raw = await response.text();
-  let data = {};
-  try {
-    data = raw ? JSON.parse(raw) : {};
-  } catch {
-    throw new Error(`癫影接口返回不是 JSON (HTTP ${response.status})`);
-  }
-  if (!response.ok) {
-    throw new Error(data?.msg || data?.message || data?.code || `HTTP ${response.status}`);
-  }
-  return {
-    data,
-    cookie: mergeCookieHeaders(options.cookie, buildCookieHeaderFromSetCookie(response.headers))
-  };
-}
-
-async function dian115Login(account) {
-  maybeAllowInsecureTls(account);
-  const baseUrl = normalizeBaseUrl(account.baseUrl, DEFAULT_DIAN115_BASE_URL);
-  const visitorId = crypto.randomUUID();
-  const keyPair = await crypto.webcrypto.subtle.generateKey(
-    { name: "ECDSA", namedCurve: "P-256" },
-    true,
-    ["sign", "verify"]
-  );
-  const publicJwk = await crypto.webcrypto.subtle.exportKey("jwk", keyPair.publicKey);
-  const common = { visitorId };
-  const challengeResult = await dian115JsonRequest(baseUrl, "/auth/browser-challenge", common);
-  let cookie = challengeResult.cookie;
-  const proof = challengeResult.data?.enabled === false ? "" : String(challengeResult.data?.proof || "");
-  const sessionResult = await dian115JsonRequest(baseUrl, "/auth/browser-session", {
-    ...common,
-    method: "POST",
-    cookie,
-    headers: proof ? { "X-Portal-Browser-Proof": proof } : {},
-    payload: { public_jwk: { kty: publicJwk.kty, crv: publicJwk.crv, x: publicJwk.x, y: publicJwk.y } }
-  });
-  cookie = sessionResult.cookie;
-  const serverTime = Number(sessionResult.data?.server_time_ms);
-  const clockOffset = Number.isFinite(serverTime) ? serverTime - Date.now() : 0;
-
-  async function request(method, routePath, payload) {
-    const pathname = `/api/portal/${routePath.replace(/^\/+/, "")}`;
-    const timestamp = String(Math.round(Date.now() + clockOffset));
-    const nonce = base64Url(crypto.randomBytes(24));
-    const signed = `portal-browser-request/v1\n${method.toUpperCase()}\n${pathname}\n${timestamp}\n${nonce}`;
-    const signature = await crypto.webcrypto.subtle.sign(
-      { name: "ECDSA", hash: "SHA-256" },
-      keyPair.privateKey,
-      Buffer.from(signed)
-    );
-    const result = await dian115JsonRequest(baseUrl, routePath, {
-      ...common,
-      method,
-      cookie,
-      payload,
-      headers: {
-        ...(proof ? { "X-Portal-Browser-Proof": proof } : {}),
-        "X-Portal-Browser-TS": timestamp,
-        "X-Portal-Browser-Nonce": nonce,
-        "X-Portal-Browser-Sig": base64Url(signature)
-      }
-    });
-    cookie = result.cookie;
-    return result.data;
-  }
-
-  const login = await request("POST", "/auth/login", {
-    email: account.username,
-    password: account.password,
-    turnstile_token: null
-  });
-  if (!login?.user) throw new Error(login?.msg || "登录成功但未返回用户信息");
-  return { baseUrl, request, user: login.user };
-}
-
-function summarizeDian115Status(user, message = "状态正常") {
-  const lastSignInDate = String(user?.last_signin_date || "").slice(0, 10);
-  return {
-    ok: true,
-    code: 0,
-    state: "active",
-    message,
-    points: Number(user?.points ?? user?.point ?? 0),
-    currency: "积分",
-    todaySigned: Boolean(
-      user?.today_signed ?? user?.signed_today ?? (lastSignInDate === formatDateTime().slice(0, 10))
-    ),
-    currentStreak: Number(user?.consecutive_signin ?? 0),
-    lastSignInDate,
-    nickname: user?.nickname || user?.name || "",
-    raw: cloneData(user || {})
-  };
-}
-
-function summarizeDian115Checkin(payload) {
-  const message = String(payload?.msg || payload?.message || "");
-  const already = payload?.code === "already_signed" || isAlreadyCheckedInMessage(message);
-  return {
-    ok: payload?.ok !== false || already,
-    already,
-    code: payload?.code ?? 0,
-    message: message || (already ? "今日已签到" : "签到成功"),
-    points: Number(payload?.reward ?? payload?.points_delta ?? payload?.points ?? 0),
-    balance: Number(payload?.new_balance ?? payload?.balance ?? 0),
-    currency: "积分",
-    todaySigned: true,
-    raw: cloneData(payload || {})
-  };
-}
-
 async function embymbLogin(account) {
   maybeAllowInsecureTls(account);
 
@@ -3018,30 +2858,6 @@ function summarizeCheckinPayload(payload) {
 }
 
 async function refreshAccountStatus(account) {
-  if ((account.provider || "glados") === "dian115") {
-    const now = formatDateTime();
-    let status;
-    try {
-      const session = await dian115Login(account);
-      const payload = await session.request("GET", "/me");
-      const user = payload?.user || payload?.data || payload;
-      status = summarizeDian115Status(user);
-    } catch (error) {
-      status = {
-        ok: false,
-        code: null,
-        state: /登录|密码|token|unauthorized/i.test(error.message) ? "unauthorized" : "error",
-        message: error.message,
-        points: null,
-        currency: "积分",
-        todaySigned: false,
-        raw: null
-      };
-    }
-    const nextAccount = { ...account, lastStatusAt: now, lastStatus: status, updatedAt: now };
-    return { account: nextAccount, summary: { id: nextAccount.id, name: nextAccount.name, status } };
-  }
-
   if ((account.provider || "glados") === "embymb") {
     const now = formatDateTime();
     let status;
@@ -3203,36 +3019,6 @@ async function refreshAccountStatus(account) {
 }
 
 async function runAccountCheckin(account) {
-  if ((account.provider || "glados") === "dian115") {
-    const now = formatDateTime();
-    let nextAccount = { ...account };
-    let checkin;
-    try {
-      const session = await dian115Login(account);
-      const payload = await session.request("POST", "/signin", { mode: "normal" });
-      checkin = summarizeDian115Checkin(payload);
-    } catch (error) {
-      const already = isAlreadyCheckedInMessage(error.message) || error.message === "already_signed";
-      checkin = {
-        ok: already,
-        already,
-        code: already ? "already_signed" : null,
-        message: already ? "今日已签到" : error.message,
-        points: 0,
-        balance: null,
-        currency: "积分",
-        todaySigned: already,
-        raw: null
-      };
-    }
-    nextAccount = { ...nextAccount, lastCheckinAt: now, lastCheckin: checkin, updatedAt: now };
-    if (checkin.ok) nextAccount = (await refreshAccountStatus(nextAccount)).account;
-    return {
-      account: nextAccount,
-      summary: { id: nextAccount.id, name: nextAccount.name, checkin, status: nextAccount.lastStatus || null }
-    };
-  }
-
   if ((account.provider || "glados") === "embymb") {
     const now = formatDateTime();
     let nextAccount = { ...account };
@@ -4067,7 +3853,16 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
-  ensureDataFiles();
-  console.log(`Checkin API listening on http://${HOST}:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, HOST, () => {
+    ensureDataFiles();
+    console.log(`Checkin API listening on http://${HOST}:${PORT}`);
+  });
+}
+
+module.exports = {
+  runAccountCheckin,
+  refreshAccountStatus,
+  readAccounts,
+  writeAccounts
+};

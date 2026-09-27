@@ -982,6 +982,7 @@ async def run_single_bot(client: Client, bot: dict):
         "tbagemby_bot": 20,
         "garysclubsubbot": 20,
         "chapanda3_bot": 20,
+        "madowchat_bot": 20,
     }.get(target.lower(), REQUEST_TIMEOUT)
     deadline = asyncio.get_event_loop().time() + bot_timeout
     while asyncio.get_event_loop().time() < deadline:

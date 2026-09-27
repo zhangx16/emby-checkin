@@ -1,4 +1,4 @@
-# GLaDOS Check-in Web
+# Emby Check-in Tools
 
 一个轻量的多站点签到管理面板，用于集中管理账号、查看状态并执行单个或批量签到。
 

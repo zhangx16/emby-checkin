@@ -87,7 +87,6 @@ const BOT_AVATAR_DIR = path.join(PUBLIC_DIR, "bot-avatars");
 const SITE_ICON_DIR = path.join(PUBLIC_DIR, "site-icons");
 const BOT_AVATAR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SITE_ICON_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const LOGIN_PAGE = path.join(PUBLIC_DIR, "login.html");
 const PROVIDER_DEFAULT_BASE = {
   glados: DEFAULT_GLADOS_BASE_URL,
   embypulse: DEFAULT_EMBYPULSE_BASE_URL,
@@ -1142,7 +1141,7 @@ function readRequestBody(req) {
 }
 
 function serveStatic(req, res, url) {
-  const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
+  const pathname = url.pathname;
   const safePath = path.normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
   const filePath = path.join(PUBLIC_DIR, safePath);
 
@@ -1170,13 +1169,7 @@ function requireAuth(req, res, url) {
     return true;
   }
 
-  if (url.pathname.startsWith("/api/")) {
-    sendJson(res, 401, { error: "Unauthorized" });
-    return false;
-  }
-
-  res.writeHead(302, { Location: "/login" });
-  res.end();
+  sendJson(res, 401, { error: "Unauthorized" });
   return false;
 }
 
@@ -1213,7 +1206,7 @@ function requireAppOrSessionAuth(req, res) {
   sendJson(res, 401, {
     error: "Unauthorized",
     hint: APP_API_TOKEN
-      ? "Provide Authorization: Bearer <APP_API_TOKEN> or log in via /api/login"
+      ? "Provide Authorization: Bearer <APP_API_TOKEN> or X-API-Key"
       : "APP_API_TOKEN is not configured; use web session login"
   });
   return false;
@@ -4059,26 +4052,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/login") {
-      if (isAuthenticated(req)) {
-        res.writeHead(302, { Location: "/" });
-        res.end();
-        return;
-      }
-
-      res.writeHead(200, {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-store"
-      });
-      fs.createReadStream(LOGIN_PAGE).pipe(res);
-      return;
-    }
-
-    if ((url.pathname === "/login.css" || url.pathname === "/login.js") && (req.method === "GET" || req.method === "HEAD")) {
-      serveStatic(req, res, url);
-      return;
-    }
-
     // Public icons for mobile clients (AsyncImage) — TG bot photos + website favicons/logos.
     if (
       (url.pathname.startsWith("/bot-avatars/") || url.pathname.startsWith("/site-icons/")) &&
@@ -4088,16 +4061,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      sendText(res, 405, "Method Not Allowed");
-      return;
-    }
-
-    if (!requireAuth(req, res, url)) {
-      return;
-    }
-
-    serveStatic(req, res, url);
+    sendJson(res, 404, { error: "Not Found" });
   } catch (error) {
     sendJson(res, 500, { error: error.message || "服务器内部错误" });
   }
@@ -4105,5 +4069,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   ensureDataFiles();
-  console.log(`Checkin dashboard listening on http://${HOST}:${PORT}`);
+  console.log(`Checkin API listening on http://${HOST}:${PORT}`);
 });

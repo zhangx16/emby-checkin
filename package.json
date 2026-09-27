@@ -1,7 +1,7 @@
 {
   "name": "glados-checkin-web",
   "version": "1.0.0",
-  "description": "GLaDOS account dashboard for status viewing and batch check-in",
+  "description": "Multi-site and Telegram bot check-in scripts with a read-only summary API",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js && node --check scripts/daily_checkin_report.js && node --check scripts/embypulse_daily_checkin.js && node --check scripts/embymb_daily_checkin.js && node --check scripts/zhousanwan_daily_checkin.js && node --check scripts/website_checkin_summary.js"

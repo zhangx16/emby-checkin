@@ -1,6 +1,6 @@
 # Emby Check-in Tools
 
-一个轻量的多站点签到管理面板，用于集中管理账号、查看状态并执行单个或批量签到。
+多站点与 Telegram Bot 自动签到。本仓库不提供网页面板，签到靠脚本和定时任务，状态通过 API 读取。
 
 当前支持：
 
@@ -9,22 +9,20 @@
 - EmbyMB 账号密码签到
 - 周三晚账号密码签到
 - 癫影（dian115）账号密码签到
-- Telegram Bot 签到配置和手动触发
+- Telegram Bot 签到
 - 自动签到脚本和 Telegram 汇报
 
 ## 功能
 
-- 登录保护的本地 Web 面板
-- 账号新增、编辑、删除、导入、导出
-- 账号状态刷新和批量签到
+- 站点与 Telegram Bot 自动签到
 - 签到失败重试
 - 可选 Telegram 汇报
 - 可选 systemd timer 定时任务
+- 只读 Summary API，供客户端拉取结果
 
 ## 环境要求
 
 - Node.js 18 或更高版本
-- Linux/macOS/Windows 均可运行 Web 面板
 - 可选：Python 3.11+ 和 `embykeeper`，用于 Telegram Bot 签到
 - 可选：systemd 和 Nginx，用于服务器部署
 
@@ -34,6 +32,11 @@
 git clone https://github.com/zhangx16/emby-checkin.git
 cd emby-checkin
 cp .env.example .env
+```
+
+首次使用前请编辑 `.env`。需要 Summary API 时再启动：
+
+```bash
 node server.js
 ```
 
@@ -41,20 +44,6 @@ node server.js
 
 ```text
 http://127.0.0.1:22821
-```
-
-首次使用前请编辑 `.env`，至少修改：
-
-```env
-ADMIN_USER=admin
-ADMIN_PASS=change-this-password
-SESSION_SECRET=replace-with-a-long-random-string
-```
-
-也可以使用 npm 脚本：
-
-```bash
-npm start
 ```
 
 ## Mobile / App API（只读摘要）
@@ -74,7 +63,7 @@ curl -sS -H "Authorization: Bearer $APP_API_TOKEN" \
   https://checkin.example.com/api/v1/summary | jq .
 ```
 
-也支持 `X-API-Key: <token>`。Web 面板登录 Cookie 同样可访问该接口。
+也支持 `X-API-Key: <token>`。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -175,7 +164,7 @@ python3 -m venv .venv-embykeeper
 pip install embykeeper
 ```
 
-在面板中填写 Telegram 账号和 Bot 模板后，可先在终端执行首次登录：
+在 `data/embykeeper/form.json` 中填写 Telegram 账号和 Bot 模板后，可先在终端执行首次登录：
 
 ```bash
 scripts/embykeeper_run_once.sh
